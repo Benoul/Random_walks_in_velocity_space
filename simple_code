@@ -1,0 +1,91 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+SEED = 1
+np.random.seed(SEED)
+
+G = 1.0
+m = 1.0
+n_density = 0.5
+v_rel = 5.0  
+#impact parameter range
+b_min = 0.5
+b_max = 20.0
+dt = 0.1
+T = 200.0
+
+cross_section = np.pi * (b_max**2 - b_min**2)
+
+encounter_rate = n_density * v_rel * cross_section
+
+num_steps = int(T / dt)
+
+times = np.linspace(0, T, num_steps+1)
+vx = np.zeros(num_steps+1)
+vy = np.zeros(num_steps+1)
+vz = np.zeros(num_steps+1)
+speed = np.zeros(num_steps+1)
+
+vx[0] = v_rel
+vy[0] = 0.0
+vz[0] = 0.0
+speed[0] = np.sqrt(v_rel**2)
+
+kick_magnitudes = []
+
+for i in range(num_steps):
+
+    # Expected number of encounters in this step
+    mean_k = encounter_rate * dt
+    k = np.random.poisson(mean_k)
+
+    v_vec = np.array([vx[i], vy[i], vz[i]])
+    v_norm = np.linalg.norm(v_vec)
+
+    vx_new, vy_new, vz_new = v_vec
+
+    for _ in range(k):
+        u = np.random.rand()
+        b = np.sqrt(b_min**2 + u * (b_max**2 - b_min**2))
+
+        dv_mag = 2 * G * m / (b * v_rel)
+        kick_magnitudes.append(dv_mag)
+
+        if v_norm == 0:
+            perp = np.random.normal(size=3)
+            perp /= np.linalg.norm(perp)
+        else:
+            rand_vec = np.random.normal(size=3)
+            perp = rand_vec - (np.dot(rand_vec, v_vec) / (v_norm**2)) * v_vec
+            perp /= np.linalg.norm(perp)
+
+        dv = dv_mag * perp
+        vx_new += dv[0]
+        vy_new += dv[1]
+        vz_new += dv[2]
+
+    vx[i+1] = vx_new
+    vy[i+1] = vy_new
+    vz[i+1] = vz_new
+    speed[i+1] = np.sqrt(vx_new**2 + vy_new**2 + vz_new**2)
+
+
+plt.figure(figsize=(6,6))
+plt.plot(vx, vy, linewidth=0.7)
+plt.scatter(vx[0], vy[0], label='start')
+plt.scatter(vx[-1], vy[-1], label='end')
+plt.xlabel("vx")
+plt.ylabel("vy")
+plt.title("Velocity Space Random Walk (vx vs vy)")
+plt.legend()
+plt.grid()
+plt.show()
+
+plt.figure(figsize=(8,4))
+plt.plot(times, speed**2)
+plt.xlabel("time")
+plt.ylabel("speed²")
+plt.title("Speed Squared vs Time")
+plt.grid()
+plt.show()
+
